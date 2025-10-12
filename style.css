@@ -1,0 +1,95 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #ffffff;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.main {
+  text-align: center;
+}
+
+h1 {
+  font-size: 36px;
+  margin-bottom: 50px;
+  color: #222;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 140px; /* khoảng cách giữa 2 vòng tròn */
+}
+
+.circle-container {
+  position: relative;
+  text-align: center;
+}
+
+.circle {
+  transform: rotate(-90deg);
+}
+
+.bg {
+  fill: none;
+  stroke: #e6e6e6;
+  stroke-width: 16;
+}
+
+.progress {
+  fill: none;
+  stroke: limegreen;
+  stroke-width: 16;
+  stroke-linecap: round;
+  transition: stroke 0.4s ease, stroke-dashoffset 0.4s ease;
+}
+
+.value {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* 🔹 căn giữa hoàn hảo */
+  font-size: 40px;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+}
+
+p {
+  margin-top: 20px;
+  font-size: 40px;
+  color: #444;
+}
+
+#alert-box {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 0, 0, 0.9);
+  color: white;
+  padding: 20px 50px;
+  border-radius: 12px;
+  font-size: 22px;
+  font-weight: bold;
+  box-shadow: 0 0 25px rgba(255, 0, 0, 0.6);
+  display: none;
+  animation: fadeIn 0.3s ease;
+  z-index: 9999;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

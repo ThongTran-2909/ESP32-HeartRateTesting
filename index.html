@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32 Heart Rate Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="main">
+    <h1>ESP32 HEART RATE MONITOR AND FALL DETECTION</h1>
+    <div id="alert-box"></div>
+
+    <div class="container">
+      <!-- Heart Rate -->
+      <div class="circle-container">
+        <svg class="circle" width="400" height="400">
+          <circle class="bg" cx="200" cy="200" r="170"></circle>
+          <circle class="progress" id="hr-circle" cx="200" cy="200" r="170"></circle>
+        </svg>
+        <div class="value" id="hr-value">0 BPM</div>
+        <p>Heart Rate</p>
+      </div>
+
+      <!-- SpO2 -->
+      <div class="circle-container">
+        <svg class="circle" width="400" height="400">
+          <circle class="bg" cx="200" cy="200" r="170"></circle>
+          <circle class="progress" id="spo2-circle" cx="200" cy="200" r="170"></circle>
+        </svg>
+        <div class="value" id="spo2-value">0%</div>
+        <p>SpO₂</p>
+      </div>
+    </div>
+  </div>
+
+  <audio id="alert-sound" src="alert-33762.mp3" preload="auto"></audio>
+
+  <script>
+    function updateCircle(id, value, max, colorCondition) {
+      const circle = document.getElementById(id);
+      const radius = 110;
+      const circumference = 2 * Math.PI * radius;
+      const offset = circumference - (value / max) * circumference;
+
+      circle.style.strokeDasharray = circumference;
+      circle.style.strokeDashoffset = offset;
+      circle.style.stroke = colorCondition ? "red" : "limegreen";
+    }
+
+    function playAlertSound(active) {
+      const alertSound = document.getElementById("alert-sound");
+      if (active) {
+        if (alertSound.paused) alertSound.play();
+      } else {
+        alertSound.pause();
+        alertSound.currentTime = 0;
+      }
+    }
+
+    function showAlert(message) {
+      const box = document.getElementById("alert-box");
+      box.textContent = message;
+      box.style.display = "block";
+      clearTimeout(window.alertTimeout);
+      window.alertTimeout = setTimeout(() => {
+        box.style.display = "none";
+      }, 3000);
+    }
+
+    function updateData(heartRate, spo2) {
+      document.getElementById("hr-value").textContent = heartRate + " BPM";
+      document.getElementById("spo2-value").textContent = spo2 + "%";
+
+      const hrAlert = heartRate > 100 || heartRate < 50;
+      const spo2Alert = spo2 < 95;
+
+      updateCircle("hr-circle", heartRate, 150, hrAlert);
+      updateCircle("spo2-circle", spo2, 100, spo2Alert);
+
+      playAlertSound(hrAlert || spo2Alert);
+
+      if (hrAlert)
+        showAlert("⚠️ Cảnh báo: Nhịp tim bất thường (" + heartRate + " BPM)");
+      else if (spo2Alert)
+        showAlert("⚠️ Cảnh báo: SpO₂ thấp (" + spo2 + "%)");
+    }
+  </script>
+
+  <!-- ✅ Firebase v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
+  <script>
+    // ✅ Cấu hình Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyAULCcxzxiS9qHxD5Qmq2O0cw3IfcvbICU",
+      authDomain: "heartratemonitor-2c056.firebaseapp.com",
+      databaseURL: "https://heartratemonitor-2c056-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "heartratemonitor-2c056",
+      storageBucket: "heartratemonitor-2c056.firebasestorage.app",
+      messagingSenderId: "717061120649",
+      appId: "1:717061120649:web:c63748500b40b118d51c58"
+    };
+
+    // ✅ Khởi tạo Firebase
+    firebase.initializeApp(firebaseConfig);
+    var database = firebase.database();
+
+    // ✅ Lắng nghe thay đổi realtime
+    var heartRef = database.ref("HeartRate");
+    var spo2Ref = database.ref("Sp02");
+
+    heartRef.on("value", function(snapshot) {
+      var heartRate = snapshot.val();
+      spo2Ref.once("value").then(function(spSnap) {
+        var spo2 = spSnap.val();
+        updateData(heartRate, spo2);
+      });
+    });
+  </script>
+</body>
+</html>
