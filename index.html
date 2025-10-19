@@ -11,6 +11,7 @@
     <h1>ESP32 HEART RATE MONITOR AND FALL DETECTION</h1>
     <div id="alert-box"></div>
 
+    <!-- Hai vòng tròn -->
     <div class="container">
       <!-- Heart Rate -->
       <div class="circle-container">
@@ -32,11 +33,40 @@
         <p>SpO₂</p>
       </div>
     </div>
+
+    <!-- Lịch sử cảnh báo -->
+    <div id="history-section">
+      <h2>Lịch sử cảnh báo</h2>
+      <ul id="history-list"></ul>
+    </div>
+
+    <!-- Nút bật / tắt -->
+    <button id="toggle-history">▲ Ẩn lịch sử</button>
   </div>
 
   <audio id="alert-sound" src="alert-33762.mp3" preload="auto"></audio>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
   <script>
+    // ✅ Cấu hình Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyAULCcxzxiS9qHxD5Qmq2O0cw3IfcvbICU",
+      authDomain: "heartratemonitor-2c056.firebaseapp.com",
+      databaseURL: "https://heartratemonitor-2c056-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "heartratemonitor-2c056",
+      storageBucket: "heartratemonitor-2c056.firebasestorage.app",
+      messagingSenderId: "717061120649",
+      appId: "1:717061120649:web:c63748500b40b118d51c58"
+    };
+
+    // ✅ Khởi tạo Firebase
+    firebase.initializeApp(firebaseConfig);
+    var database = firebase.database();
+
+    // ✅ Hàm xử lý hiển thị và cảnh báo
     function updateCircle(id, value, max, colorCondition) {
       const circle = document.getElementById(id);
       const radius = 110;
@@ -68,6 +98,7 @@
       }, 3000);
     }
 
+    // ✅ Cập nhật dữ liệu và lưu lịch sử
     function updateData(heartRate, spo2) {
       document.getElementById("hr-value").textContent = heartRate + " BPM";
       document.getElementById("spo2-value").textContent = spo2 + "%";
@@ -80,34 +111,28 @@
 
       playAlertSound(hrAlert || spo2Alert);
 
-      if (hrAlert)
-        showAlert("⚠️ Cảnh báo: Nhịp tim bất thường (" + heartRate + " BPM)");
-      else if (spo2Alert)
-        showAlert("⚠️ Cảnh báo: SpO₂ thấp (" + spo2 + "%)");
+      if (hrAlert || spo2Alert) {
+        const alertMsg = hrAlert
+          ? `⚠️ Nhịp tim bất thường (${heartRate} BPM)`
+          : `⚠️ SpO₂ thấp (${spo2}%)`;
+
+        showAlert(alertMsg);
+
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+
+        // 🔹 Ghi lịch sử vào Firebase
+        const historyRef = database.ref("AlertHistory");
+        historyRef.push({
+          timestamp: timestamp,
+          message: alertMsg,
+          heartRate: heartRate,
+          spo2: spo2
+        });
+      }
     }
-  </script>
 
-  <!-- ✅ Firebase v8 -->
-  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
-
-  <script>
-    // ✅ Cấu hình Firebase
-    var firebaseConfig = {
-      apiKey: "AIzaSyAULCcxzxiS9qHxD5Qmq2O0cw3IfcvbICU",
-      authDomain: "heartratemonitor-2c056.firebaseapp.com",
-      databaseURL: "https://heartratemonitor-2c056-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "heartratemonitor-2c056",
-      storageBucket: "heartratemonitor-2c056.firebasestorage.app",
-      messagingSenderId: "717061120649",
-      appId: "1:717061120649:web:c63748500b40b118d51c58"
-    };
-
-    // ✅ Khởi tạo Firebase
-    firebase.initializeApp(firebaseConfig);
-    var database = firebase.database();
-
-    // ✅ Lắng nghe thay đổi realtime
+    // ✅ Lắng nghe dữ liệu realtime từ Firebase
     var heartRef = database.ref("HeartRate");
     var spo2Ref = database.ref("Sp02");
 
@@ -117,6 +142,32 @@
         var spo2 = spSnap.val();
         updateData(heartRate, spo2);
       });
+    });
+
+    // ✅ Hiển thị lịch sử cảnh báo realtime
+    var historyList = document.getElementById("history-list");
+    var historyRef = database.ref("AlertHistory");
+
+    historyRef.on("child_added", function(snapshot) {
+      var data = snapshot.val();
+      var li = document.createElement("li");
+      li.innerHTML = `
+        <strong>${data.timestamp}</strong><br>
+        ${data.message}<br>
+        ❤️ Heart Rate: <b>${data.heartRate} BPM</b> | 🩸 SpO₂: <b>${data.spo2}%</b>
+      `;
+      historyList.prepend(li);
+    });
+
+    // ✅ Nút ẩn / hiện khung lịch sử
+    const toggleBtn = document.getElementById("toggle-history");
+    const historySection = document.getElementById("history-section");
+    let isVisible = true;
+
+    toggleBtn.addEventListener("click", () => {
+      isVisible = !isVisible;
+      historySection.classList.toggle("hidden", !isVisible);
+      toggleBtn.innerHTML = isVisible ? "▲ Ẩn lịch sử" : "▼ Hiện lịch sử";
     });
   </script>
 </body>
