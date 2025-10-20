@@ -11,9 +11,7 @@
     <h1>ESP32 HEART RATE MONITOR AND FALL DETECTION</h1>
     <div id="alert-box"></div>
 
-    <!-- Hai vòng tròn -->
     <div class="container">
-      <!-- Heart Rate -->
       <div class="circle-container">
         <svg class="circle" width="400" height="400">
           <circle class="bg" cx="200" cy="200" r="170"></circle>
@@ -23,7 +21,6 @@
         <p>Heart Rate</p>
       </div>
 
-      <!-- SpO2 -->
       <div class="circle-container">
         <svg class="circle" width="400" height="400">
           <circle class="bg" cx="200" cy="200" r="170"></circle>
@@ -34,24 +31,25 @@
       </div>
     </div>
 
-    <!-- Lịch sử cảnh báo -->
     <div id="history-section">
       <h2>Lịch sử cảnh báo</h2>
       <ul id="history-list"></ul>
     </div>
 
-    <!-- Nút bật / tắt -->
-    <button id="toggle-history">▲ Ẩn lịch sử</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+      <button id="toggle-history">▲ Ẩn lịch sử</button>
+      <button id="reset-history" >
+        🗑️ Xóa lịch sử
+      </button>
+    </div>
   </div>
 
   <audio id="alert-sound" src="alert-33762.mp3" preload="auto"></audio>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
 
   <script>
-    // ✅ Cấu hình Firebase
     var firebaseConfig = {
       apiKey: "AIzaSyAULCcxzxiS9qHxD5Qmq2O0cw3IfcvbICU",
       authDomain: "heartratemonitor-2c056.firebaseapp.com",
@@ -62,17 +60,14 @@
       appId: "1:717061120649:web:c63748500b40b118d51c58"
     };
 
-    // ✅ Khởi tạo Firebase
     firebase.initializeApp(firebaseConfig);
     var database = firebase.database();
 
-    // ✅ Hàm xử lý hiển thị và cảnh báo
     function updateCircle(id, value, max, colorCondition) {
       const circle = document.getElementById(id);
       const radius = 110;
       const circumference = 2 * Math.PI * radius;
       const offset = circumference - (value / max) * circumference;
-
       circle.style.strokeDasharray = circumference;
       circle.style.strokeDashoffset = offset;
       circle.style.stroke = colorCondition ? "red" : "limegreen";
@@ -98,7 +93,6 @@
       }, 3000);
     }
 
-    // ✅ Cập nhật dữ liệu và lưu lịch sử
     function updateData(heartRate, spo2) {
       document.getElementById("hr-value").textContent = heartRate + " BPM";
       document.getElementById("spo2-value").textContent = spo2 + "%";
@@ -120,11 +114,13 @@
 
         const now = new Date();
         const timestamp = now.toLocaleString();
+        const dateValue = now.getTime();
+        const dateKey = now.toISOString().split("T")[0];
 
-        // 🔹 Ghi lịch sử vào Firebase
-        const historyRef = database.ref("AlertHistory");
+        const historyRef = database.ref("AlertHistory/" + dateKey);
         historyRef.push({
           timestamp: timestamp,
+          dateValue: dateValue,
           message: alertMsg,
           heartRate: heartRate,
           spo2: spo2
@@ -132,7 +128,6 @@
       }
     }
 
-    // ✅ Lắng nghe dữ liệu realtime từ Firebase
     var heartRef = database.ref("HeartRate");
     var spo2Ref = database.ref("Sp02");
 
@@ -144,23 +139,47 @@
       });
     });
 
-    // ✅ Hiển thị lịch sử cảnh báo realtime
     var historyList = document.getElementById("history-list");
-    var historyRef = database.ref("AlertHistory");
+    var mainHistoryRef = database.ref("AlertHistory");
 
-    historyRef.on("child_added", function(snapshot) {
-      var data = snapshot.val();
-      var li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${data.timestamp}</strong><br>
-        ${data.message}<br>
-        ❤️ Heart Rate: <b>${data.heartRate} BPM</b> | 🩸 SpO₂: <b>${data.spo2}%</b>
-      `;
-      historyList.prepend(li);
+    mainHistoryRef.on("value", function(snapshot) {
+      historyList.innerHTML = "";
+      const dateEntries = [];
+
+      snapshot.forEach(function(dateSnap) {
+        dateEntries.push({
+          dateKey: dateSnap.key,
+          data: dateSnap.val()
+        });
+      });
+
+      dateEntries.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+      dateEntries.forEach((day) => {
+        const header = document.createElement("h3");
+        const dateLabel = new Date(day.dateKey).toLocaleDateString("vi-VN");
+        header.textContent = `📅 Ngày ${dateLabel}`;
+        header.style.color = "#d32f2f";
+        header.style.marginTop = "10px";
+        historyList.appendChild(header);
+
+        const alerts = Object.values(day.data).sort((a, b) => b.dateValue - a.dateValue);
+
+        alerts.forEach((data) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <strong>${data.timestamp}</strong>
+            
+            ${data.message}<br>
+            ❤️ Heart Rate: <b>${data.heartRate} BPM</b> | 🩸 SpO₂: <b>${data.spo2}%</b>
+          `;
+          historyList.appendChild(li);
+        });
+      });
     });
 
-    // ✅ Nút ẩn / hiện khung lịch sử
     const toggleBtn = document.getElementById("toggle-history");
+    const resetBtn = document.getElementById("reset-history");
     const historySection = document.getElementById("history-section");
     let isVisible = true;
 
@@ -168,6 +187,19 @@
       isVisible = !isVisible;
       historySection.classList.toggle("hidden", !isVisible);
       toggleBtn.innerHTML = isVisible ? "▲ Ẩn lịch sử" : "▼ Hiện lịch sử";
+    });
+
+    resetBtn.addEventListener("click", () => {
+      if (confirm("⚠️ Bạn có chắc muốn xóa toàn bộ lịch sử cảnh báo không?")) {
+        database.ref("AlertHistory").remove()
+          .then(() => {
+            alert("✅ Lịch sử đã được xóa!");
+            historyList.innerHTML = "";
+          })
+          .catch((error) => {
+            alert("❌ Lỗi khi xóa lịch sử: " + error.message);
+          });
+      }
     });
   </script>
 </body>
