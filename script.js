@@ -217,9 +217,9 @@ function updateData(heartRate, spo2, fallDetected) {
 // ============================================
 
 // Reference đến các node Firebase
-var heartRef = database.ref("HeartRate");
-var spo2Ref = database.ref("Sp02");
-var fallRef = database.ref("FallDetection");
+var heartRef = database.ref("users/user_elderly_001/sensorData/current/heartRate");
+var spo2Ref = database.ref("users/user_elderly_001/sensorData/current/spo2");
+var fallRef = database.ref("users/user_elderly_001/sensorData/current/fallDetected");
 
 // ----- LISTENER: Heart Rate -----
 heartRef.on("value", function(snapshot) {
