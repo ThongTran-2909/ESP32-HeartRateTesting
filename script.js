@@ -21,6 +21,7 @@ var database = firebase.database();
 let currentHR = 0;        // Heart Rate hiện tại
 let currentSpO2 = 0;      // SpO2 hiện tại
 let currentFall = false;  // Trạng thái Fall Detection
+let currentManual = false ; //trạng thái nút nhấn 
 
 // ============================================
 // CHỨC NĂNG: Vẽ vòng tròn progress (Heart Rate & SpO2)
@@ -82,13 +83,13 @@ function showAlert(message) {
   box.textContent = message;
   box.style.display = "block";
   
-  // Clear timeout cũ nếu có (tránh conflict)
-  clearTimeout(window.alertTimeout);
+  // // Clear timeout cũ nếu có (tránh conflict)
+  // clearTimeout(window.alertTimeout);
   
-  // Tự động ẩn sau 3 giây
-  window.alertTimeout = setTimeout(() => {
-    box.style.display = "none";
-  }, 3000);
+  // // Tự động ẩn sau 3 giây
+  // window.alertTimeout = setTimeout(() => {
+  //   box.style.display = "none";
+  // }, 3000);
 }
 
 // ============================================
@@ -138,13 +139,15 @@ function updateFallDetection(fallDetected) {
  * @param {number} heartRate - Nhịp tim (BPM)
  * @param {number} spo2 - Độ bão hòa oxy (%)
  * @param {boolean} fallDetected - Trạng thái phát hiện ngã
+ * @param {boolean} manualDetected - nút nhấn khi cảm thấy không ổn 
  */
-function updateData(heartRate, spo2, fallDetected) {
+function updateData(heartRate, spo2, fallDetected,manualDetected) {
   // Debug: In ra console để kiểm tra
   console.log("=== UPDATE DATA ===");
   console.log("Heart Rate:", heartRate);
   console.log("SpO2:", spo2);
   console.log("Fall Detected:", fallDetected);
+  console.log("Manual Detected:", manualDetected);
 
   // ===== BƯỚC 1: Cập nhật giá trị hiển thị =====
   document.getElementById("hr-value").textContent = heartRate;
@@ -172,18 +175,23 @@ function updateData(heartRate, spo2, fallDetected) {
   playAlertSound(hasAlert);
 
   // ===== BƯỚC 6: Hiển thị thông báo và lưu lịch sử =====
+  const alertBox = document.getElementById("alert-box");
+
   if (hasAlert) {
     let alertMsg = "";
     
     // Xác định loại cảnh báo (ưu tiên Fall Detection)
-    if (fallDetected) {
+    if(manualDetected){
+      alertMsg ="🚨 CẢNH BÁO: Phát hiện bất thường từ người dùng !";
+    }
+    else if (fallDetected) {
       alertMsg = "🚨 CẢNH BÁO: Phát hiện ngã!";
     } else if (hrAlert) {
       alertMsg = `⚠️ Nhịp tim bất thường (${heartRate} BPM)`;
     } else if (spo2Alert) {
       alertMsg = `⚠️ SpO₂ thấp (${spo2}%)`;
     }
-
+    
     console.log("Alert Message:", alertMsg);
 
     // Hiển thị alert box
@@ -208,6 +216,7 @@ function updateData(heartRate, spo2, fallDetected) {
     console.log("✅ Đã lưu vào history");
   } else {
     console.log("❌ Không có cảnh báo nào");
+    alertBox.style.display = "none";
   }
   console.log("==================");
 }
@@ -220,25 +229,30 @@ function updateData(heartRate, spo2, fallDetected) {
 var heartRef = database.ref("users/user_elderly_001/sensorData/current/heartRate");
 var spo2Ref = database.ref("users/user_elderly_001/sensorData/current/spo2");
 var fallRef = database.ref("users/user_elderly_001/sensorData/current/fallDetected");
+var manualRef = database.ref("/users/user_elderly_001/sensorData/current/manualAlert")
 
 // ----- LISTENER: Heart Rate -----
 heartRef.on("value", function(snapshot) {
   currentHR = snapshot.val() || 0;
-  updateData(currentHR, currentSpO2, currentFall);
+  updateData(currentHR, currentSpO2, currentFall, currentManual);
 });
 
 // ----- LISTENER: SpO2 -----
 spo2Ref.on("value", function(snapshot) {
   currentSpO2 = snapshot.val() || 0;
-  updateData(currentHR, currentSpO2, currentFall);
+  updateData(currentHR, currentSpO2, currentFall, currentManual);
 });
 
 // ----- LISTENER: Fall Detection -----
 fallRef.on("value", function(snapshot) {
   currentFall = snapshot.val() || false;
-  updateData(currentHR, currentSpO2, currentFall);
+  updateData(currentHR, currentSpO2, currentFall, currentManual);
 });
 
+manualRef.on("value", function(snapshot) {
+    currentManual = snapshot.val() || false;
+    updateData(currentHR, currentSpO2, currentFall, currentManual);
+}); 
 // ============================================
 // HIỂN THỊ LỊCH SỬ CẢNH BÁO
 // ============================================
