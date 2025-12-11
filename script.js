@@ -22,6 +22,8 @@ let currentHR = 0;        // Heart Rate hiện tại
 let currentSpO2 = 0;      // SpO2 hiện tại
 let currentFall = false;  // Trạng thái Fall Detection
 let currentManual = false; // Trạng thái nút nhấn
+let notificationEnabled = true; // Trạng thái bật/tắt thông báo
+let previousAlertState = false; // Trạng thái cảnh báo trước đó
 
 // ============================================
 // CHỨC NĂNG: Vẽ vòng tròn progress (Heart Rate & SpO2)
@@ -44,7 +46,8 @@ function updateCircle(id, value, max, colorCondition) {
 function playAlertSound(active) {
   const alertSound = document.getElementById("alert-sound");
   
-  if (active) {
+  // Chỉ phát âm thanh nếu thông báo được bật
+  if (active && notificationEnabled) {
     if (alertSound.paused) {
       alertSound.play().catch(e => console.log("Audio play failed:", e));
     }
@@ -59,8 +62,14 @@ function playAlertSound(active) {
 // ============================================
 function showAlert(message) {
   const box = document.getElementById("alert-box");
-  box.textContent = message;
-  box.style.display = "block";
+  
+  // Chỉ hiển thị nếu thông báo được bật
+  if (notificationEnabled) {
+    box.textContent = message;
+    box.style.display = "block";
+  } else {
+    box.style.display = "none";
+  }
 }
 
 // ============================================
@@ -111,7 +120,7 @@ function updateData(heartRate, spo2, fallDetected, manualDetected) {
   document.getElementById("spo2-value").textContent = spo2;
 
   // ===== BƯỚC 2: Kiểm tra điều kiện bất thường =====
-  const hrAlert = (heartRate > 100 || heartRate < 50) && heartRate > 0;
+  const hrAlert = (heartRate > 120 || heartRate < 60) && heartRate > 0;
   const spo2Alert = spo2 < 95 && spo2 > 0;
 
   console.log("HR Alert:", hrAlert, "(HR > 100 hoặc HR < 50)");
@@ -133,7 +142,7 @@ function updateData(heartRate, spo2, fallDetected, manualDetected) {
   // ===== BƯỚC 6: Hiển thị thông báo nếu có cảnh báo =====
   const alertBox = document.getElementById("alert-box");
 
-  if (hasAlert) {
+  if (hasAlert && notificationEnabled) {
     let alertMsg = "";
     
     if (manualDetected) {
@@ -311,5 +320,29 @@ resetBtn.addEventListener("click", () => {
       .catch((error) => {
         alert("❌ Lỗi khi xóa lịch sử: " + error.message);
       });
+  }
+});
+
+// ============================================
+// NÚT TẮT/BẬT THÔNG BÁO
+// ============================================
+const toggleNotificationBtn = document.getElementById("toggle-notification");
+
+toggleNotificationBtn.addEventListener("click", () => {
+  notificationEnabled = !notificationEnabled;
+  
+  if (notificationEnabled) {
+    toggleNotificationBtn.innerHTML = "🔔 Bật thông báo";
+    toggleNotificationBtn.style.backgroundColor = "#4caf50";
+    // Reset trạng thái cảnh báo trước đó để không hiện alert cũ
+    previousAlertState = true;
+    alert("✅ Đã bật thông báo cảnh báo");
+  } else {
+    toggleNotificationBtn.innerHTML = "🔕 Tắt thông báo";
+    toggleNotificationBtn.style.backgroundColor = "#9e9e9e";
+    // Tắt âm thanh và ẩn alert box ngay lập tức
+    playAlertSound(false);
+    document.getElementById("alert-box").style.display = "none";
+    alert("🔕 Đã tắt thông báo cảnh báo");
   }
 });
